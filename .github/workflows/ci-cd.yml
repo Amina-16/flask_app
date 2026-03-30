@@ -2,33 +2,57 @@ name: CI-CD FLASK Docker
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
+
+env:
+  IMAGE_NAME: arifamina/flask_devops_demo
 
 jobs:
-    cd:
-        name: docker build & deploy
-        runs-on: ubuntu-latest
-        steps:
-        - name: Checkout repository
-          uses: actions/Checkout@v3
-        - name: set up Docker 
-          uses: docker/setup-buildx-action@v2
+  cd:
+    name: Docker build and deploy
+    runs-on: ubuntu-latest
 
-        - name: Login to Docker Hub
-          uses: docker/login-action@v2
-          with:
-            username: ${{ secrets.DOCKERHUB_USERNAME }}
-            password: ${{ secrets.DOCKERHUB_TOKEN }}
-        
-        - name: Build and Push Docker image
-          run: |
-            docker build -t arifamina/flask_devops_demo:latest .
-            docker push arifamina/flask_devops_demo:latest
-        - name: Deploy via SSH
-          run : |
-             echo "${{secrets.SSH_KEY}}" > key.pem
-             chmod 600 key.pem
-             ssh -i key.pem -o StrictHostKeyChecking=no "${{secrets.SSH_USER}}@${{secrets.SSH_HOST}}" \
-             "powershell -ExecutionPolicy Bypass -File
-             'C:\\Users\\Amina\\Desktop\\S4\\Intro_DevOps\\TP9\\flask_app\\deploy.ps1' -DockerUser ${{ secrets.DOCKERHUB_USERNAME }}
-             -DockerToken ${{ secrets.DOCKERHUB_TOKEN }}"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ env.IMAGE_NAME }}:latest
+
+      - name: Deploy via SSH
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+        run: |
+          printf '%s\n' "${{ secrets.SSH_KEY }}" > key.pem
+          chmod 600 key.pem
+
+          PORT="${SSH_PORT:-22}"
+          echo "Testing SSH connectivity to ${SSH_HOST}:${PORT}"
+          nc -zv -w 10 "${SSH_HOST}" "${PORT}"
+
+          ssh -i key.pem \
+            -p "${PORT}" \
+            -o StrictHostKeyChecking=no \
+            -o ConnectTimeout=15 \
+            -o ServerAliveInterval=30 \
+            -o ServerAliveCountMax=3 \
+            "${SSH_USER}@${SSH_HOST}" \
+            "powershell -ExecutionPolicy Bypass -File 'C:\\Users\\Amina\\Desktop\\S4\\Intro_DevOps\\TP9\\flask_app\\deploy.ps1' -DockerUser '${{ secrets.DOCKERHUB_USERNAME }}' -DockerToken '${{ secrets.DOCKERHUB_TOKEN }}'"
+
+          rm -f key.pem
