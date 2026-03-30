@@ -26,9 +26,9 @@ jobs:
             docker push arifamina/flask_devops_demo:latest
         - name: Deploy via SSH
           run : |
-             echo"${{secrets.SSH_KEY}}" > key.pem
+             echo "${{secrets.SSH_KEY}}" > key.pem
              chmod 600 key.pem
-             ssh - i key.pem -o StrictHostKeyChecking=no "${{secrets.SSH_USER}}@${{secrets.SSH_HOST}}" \
+             ssh -i key.pem -o StrictHostKeyChecking=no "${{secrets.SSH_USER}}@${{secrets.SSH_HOST}}" \
              "powershell -ExecutionPolicy Bypass -File
              'C:\\Users\\Amina\\Desktop\\S4\\Intro_DevOps\\TP9\\flask_app\\deploy.ps1' -DockerUser ${{ secrets.DOCKERHUB_USERNAME }}
              -DockerToken ${{ secrets.DOCKERHUB_TOKEN }}"
