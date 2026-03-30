@@ -22,8 +22,8 @@ jobs:
         
         - name: Build and Push Docker image
           run: |
-            docker build -t amina/flask_devops_demo:latest .
-            docker push amina/flask_devops_demo:latest
+            docker build -t arifamina/flask_devops_demo:latest .
+            docker push arifamina/flask_devops_demo:latest
         - name: Deploy via SSH
           run : |
              echo "${{secrets.SSH_KEY}}" > key.pem
